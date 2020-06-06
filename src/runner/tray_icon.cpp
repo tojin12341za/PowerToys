@@ -67,6 +67,7 @@ LRESULT __stdcall tray_icon_window_proc(HWND window, UINT message, WPARAM wparam
             Shell_NotifyIcon(NIM_DELETE, &tray_icon_data);
             tray_icon_created = false;
         }
+        close_settings_window();
         PostQuitMessage(0);
         break;
     case WM_CLOSE:
@@ -164,17 +165,16 @@ void start_tray_icon()
     {
         UINT id_tray_icon = wm_icon_notify = RegisterWindowMessageW(L"WM_PowerToysIconNotify");
 
-        static LPCWSTR class_name = L"PToyTrayIconWindow";
         WNDCLASS wc = {};
         wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
         wc.hInstance = h_instance;
-        wc.lpszClassName = class_name;
+        wc.lpszClassName = pt_tray_icon_window_class;
         wc.style = CS_HREDRAW | CS_VREDRAW;
         wc.lpfnWndProc = tray_icon_window_proc;
         wc.hIcon = icon;
         RegisterClass(&wc);
         auto hwnd = CreateWindowW(wc.lpszClassName,
-                                  L"PToyTrayIconWindow",
+                                  pt_tray_icon_window_class,
                                   WS_OVERLAPPEDWINDOW | WS_POPUP,
                                   CW_USEDEFAULT,
                                   CW_USEDEFAULT,

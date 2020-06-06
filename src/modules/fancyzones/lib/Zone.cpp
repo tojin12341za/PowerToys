@@ -1,5 +1,8 @@
 #include "pch.h"
 
+
+#include <Shellscalingapi.h>
+
 #include <common/dpi_aware.h>
 #include <common/monitors.h>
 #include "Zone.h"
@@ -17,55 +20,53 @@ public:
     }
 
     IFACEMETHODIMP_(RECT) GetZoneRect() noexcept { return m_zoneRect; }
-    IFACEMETHODIMP_(bool) IsEmpty() noexcept { return m_windows.empty(); };
-    IFACEMETHODIMP_(bool) ContainsWindow(HWND window) noexcept;
-    IFACEMETHODIMP_(void) AddWindowToZone(HWND window, HWND zoneWindow, bool stampZone) noexcept;
-    IFACEMETHODIMP_(void) RemoveWindowFromZone(HWND window, bool restoreSize) noexcept;
     IFACEMETHODIMP_(void) SetId(size_t id) noexcept { m_id = id; }
     IFACEMETHODIMP_(size_t) Id() noexcept { return m_id; }
     IFACEMETHODIMP_(RECT) ComputeActualZoneRect(HWND window, HWND zoneWindow) noexcept;
 
 private:
-    void SizeWindowToZone(HWND window, HWND zoneWindow) noexcept;
-    void StampZone(HWND window, bool stamp) noexcept;
-
     RECT m_zoneRect{};
     size_t m_id{};
     std::map<HWND, RECT> m_windows{};
 };
 
-IFACEMETHODIMP_(bool) Zone::ContainsWindow(HWND window) noexcept
+static BOOL CALLBACK saveDisplayToVector(HMONITOR monitor, HDC hdc, LPRECT rect, LPARAM data)
 {
-    return (m_windows.find(window) != m_windows.end());
+    reinterpret_cast<std::vector<HMONITOR>*>(data)->emplace_back(monitor);
+    return true;
 }
 
-IFACEMETHODIMP_(void) Zone::AddWindowToZone(HWND window, HWND zoneWindow, bool stampZone) noexcept
+bool allMonitorsHaveSameDpiScaling()
 {
-    WINDOWPLACEMENT placement;
-    ::GetWindowPlacement(window, &placement);
-    ::GetWindowRect(window, &placement.rcNormalPosition);
-    m_windows.emplace(std::pair<HWND, RECT>(window, placement.rcNormalPosition));
+    std::vector<HMONITOR> monitors;
+    EnumDisplayMonitors(NULL, NULL, saveDisplayToVector, reinterpret_cast<LPARAM>(&monitors));
 
-    SizeWindowToZone(window, zoneWindow);
-    if (stampZone)
+    if (monitors.size() < 2)
     {
-        StampZone(window, true);
+        return true;
     }
-}
 
-IFACEMETHODIMP_(void) Zone::RemoveWindowFromZone(HWND window, bool restoreSize) noexcept
-{
-    auto iter = m_windows.find(window);
-    if (iter != m_windows.end())
+    UINT firstMonitorDpiX;
+    UINT firstMonitorDpiY;
+
+    if (S_OK != GetDpiForMonitor(monitors[0], MDT_EFFECTIVE_DPI, &firstMonitorDpiX, &firstMonitorDpiY))
     {
-        m_windows.erase(iter);
-        StampZone(window, false);
+        return false;
     }
-}
 
-void Zone::SizeWindowToZone(HWND window, HWND zoneWindow) noexcept
-{
-    SizeWindowToRect(window, ComputeActualZoneRect(window, zoneWindow));
+    for (int i = 1; i < monitors.size(); i++)
+    {
+        UINT iteratedMonitorDpiX;
+        UINT iteratedMonitorDpiY;
+
+        if (S_OK != GetDpiForMonitor(monitors[i], MDT_EFFECTIVE_DPI, &iteratedMonitorDpiX, &iteratedMonitorDpiY) ||
+            iteratedMonitorDpiX != firstMonitorDpiX)
+        {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 RECT Zone::ComputeActualZoneRect(HWND window, HWND zoneWindow) noexcept
@@ -101,7 +102,7 @@ RECT Zone::ComputeActualZoneRect(HWND window, HWND zoneWindow) noexcept
         const auto taskbar_top_size = std::abs(mi.rcMonitor.top - mi.rcWork.top);
         OffsetRect(&newWindowRect, -taskbar_left_size, -taskbar_top_size);
 
-        if (accountForUnawareness && MonitorInfo::GetMonitorsCount() > 1)
+        if (accountForUnawareness && !allMonitorsHaveSameDpiScaling())
         {
             newWindowRect.left = max(mi.rcMonitor.left, newWindowRect.left);
             newWindowRect.right = min(mi.rcMonitor.right - taskbar_left_size, newWindowRect.right);
@@ -117,18 +118,6 @@ RECT Zone::ComputeActualZoneRect(HWND window, HWND zoneWindow) noexcept
     }
 
     return newWindowRect;
-}
-
-void Zone::StampZone(HWND window, bool stamp) noexcept
-{
-    if (stamp)
-    {
-        SetProp(window, ZONE_STAMP, reinterpret_cast<HANDLE>(m_id));
-    }
-    else
-    {
-        RemoveProp(window, ZONE_STAMP);
-    }
 }
 
 winrt::com_ptr<IZone> MakeZone(const RECT& zoneRect) noexcept

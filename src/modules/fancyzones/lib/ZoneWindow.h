@@ -7,6 +7,7 @@ namespace ZoneWindowUtils
     const std::wstring& GetActiveZoneSetTmpPath();
     const std::wstring& GetAppliedZoneSetTmpPath();
     const std::wstring& GetCustomZoneSetsTmpPath();
+
     std::wstring GenerateUniqueId(HMONITOR monitor, PCWSTR deviceId, PCWSTR virtualDesktopId);
 }
 
@@ -23,7 +24,7 @@ interface __declspec(uuid("{7F017528-8110-4FB3-BE41-F472969C2560}")) IZoneWindow
      * @param   dragEnabled Boolean indicating is giving hints about active zone layout enabled.
      *                      Hints are given while dragging window while holding SHIFT key.
      */
-    IFACEMETHOD(MoveSizeEnter)(HWND window, bool dragEnabled) = 0;
+    IFACEMETHOD(MoveSizeEnter)(HWND window) = 0;
     /**
      * A window has changed location, shape, or size. Track down window position and give zone layout
      * hints if dragging functionality is enabled.
@@ -38,14 +39,9 @@ interface __declspec(uuid("{7F017528-8110-4FB3-BE41-F472969C2560}")) IZoneWindow
      * is dropped within zone borders.
      *
      * @param window   Handle of window being moved or resized.
-     * @param ptScreen Cursor coordinates where window is droped.
+     * @param ptScreen Cursor coordinates where window is dropped.
      */
     IFACEMETHOD(MoveSizeEnd)(HWND window, POINT const& ptScreen) = 0;
-    /**
-     * @returns Boolean indicating is giving hints about active zone layout enabled. Hints are
-     *          given while dragging window while holding SHIFT key.
-     */
-    IFACEMETHOD_(bool, IsDragEnabled)() = 0;
     /**
      * Assign window to the zone based on zone index inside zone layout.
      *
@@ -78,9 +74,9 @@ interface __declspec(uuid("{7F017528-8110-4FB3-BE41-F472969C2560}")) IZoneWindow
      */
     IFACEMETHOD_(void, CycleActiveZoneSet)(DWORD vkCode) = 0;
     /**
-     * Restore orginal transaprency of dragged window.
+     * Restore original transaprency of dragged window.
      */
-    IFACEMETHOD_(void, RestoreOrginalTransparency) () = 0;
+    IFACEMETHOD_(void, RestoreOriginalTransparency) () = 0;
     /**
      * Save information about zone in which window was assigned, when closing the window.
      * Used once we open same window again to assign it to its previous zone.
@@ -102,7 +98,11 @@ interface __declspec(uuid("{7F017528-8110-4FB3-BE41-F472969C2560}")) IZoneWindow
     IFACEMETHOD_(IZoneSet*, ActiveZoneSet)() = 0;
     IFACEMETHOD_(void, ShowZoneWindow)() = 0;
     IFACEMETHOD_(void, HideZoneWindow)() = 0;
+    /**
+     * Update currently active zone layout for this work area.
+     */
+    IFACEMETHOD_(void, UpdateActiveZoneSet)() = 0;
 };
 
 winrt::com_ptr<IZoneWindow> MakeZoneWindow(IZoneWindowHost* host, HINSTANCE hinstance, HMONITOR monitor,
-    const std::wstring& uniqueId, bool flashZones, bool newWorkArea) noexcept;
+    const std::wstring& uniqueId, const std::wstring& parentUniqueId, bool flashZones) noexcept;

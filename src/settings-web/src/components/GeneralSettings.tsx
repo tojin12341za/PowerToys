@@ -7,6 +7,7 @@ import { CustomActionSettingsControl } from './CustomActionSettingsControl';
 
 export class GeneralSettings extends React.Component <any, any> {
   references: any = {};
+  download_updates_automatically_reference: any;
   startup_reference: any;
   elevated_reference: any;
   restart_reference: any;
@@ -14,10 +15,11 @@ export class GeneralSettings extends React.Component <any, any> {
   parent_on_change: Function;
   constructor(props: any) {
     super(props);
-    this.references={};
-    this.startup_reference=null;
-    this.elevated_reference=null;
-    this.restart_reference=null;
+    this.references = {};
+    this.download_updates_automatically_reference = null;
+    this.startup_reference = null;
+    this.elevated_reference = null;
+    this.restart_reference = null;
     this.parent_on_change = props.on_change;
     this.state = {
       settings_key: props.settings_key,
@@ -42,6 +44,7 @@ export class GeneralSettings extends React.Component <any, any> {
     });
     let result : any = {};
     result[this.state.settings_key]= {
+      download_updates_automatically: this.download_updates_automatically_reference != null && this.download_updates_automatically_reference.get_value().value,
       startup: this.startup_reference.get_value().value,
       run_elevated: this.elevated_reference != null && this.elevated_reference.get_value().value,
       theme: this.theme_reference.get_value().value,
@@ -58,6 +61,7 @@ export class GeneralSettings extends React.Component <any, any> {
         { Object.keys(power_toys_enabled).map(
           (key) => {
             let enabled_value=power_toys_enabled[key];
+            let is_active=this.state.settings.powertoys[key].description.substr(0, 21) !== 'This feature requires';
             return <Stack key={key}>
               <Stack horizontal tokens={{childrenGap:5}}>
                 <Label>{key}</Label>
@@ -112,7 +116,9 @@ export class GeneralSettings extends React.Component <any, any> {
                 null
               }
               <BoolToggleSettingsControl
-                setting={{value: enabled_value}}
+
+                setting={{value: enabled_value && is_active}}
+                disabled={!is_active}
                 on_change={this.parent_on_change}
                 ref={(input) => {this.references[key]=input;}}
               />
@@ -121,6 +127,19 @@ export class GeneralSettings extends React.Component <any, any> {
         }
         <Separator />
         <Text variant='xLarge'>General</Text>
+
+        {this.state.settings.general.is_admin &&
+        (<Stack>
+          <Label>Download updates automatically (Except on metered connections)</Label>
+          <BoolToggleSettingsControl
+            setting={{value: this.state.settings.general.download_updates_automatically}}
+            disabled={!this.state.settings.general.is_admin}
+            on_change={this.parent_on_change}
+            ref={(input) => {this.download_updates_automatically_reference=input;}}
+          />
+        </Stack>)}
+
+
         <Stack>
           {this.state.settings.general.startup_disabled_reason != null && 
             <span style={{color:"#c50500"}} dangerouslySetInnerHTML={{__html: this.state.settings.general.startup_disabled_reason }} />

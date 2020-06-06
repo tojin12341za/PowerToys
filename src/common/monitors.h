@@ -20,7 +20,7 @@ struct ScreenSize
     POINT middle() const { return { rect.left + width() / 2, rect.top + height() / 2 }; };
     POINT middle_right() const { return { rect.right, rect.top + height() / 2 }; };
     POINT bottom_left() const { return { rect.left, rect.bottom }; };
-    POINT bottm_midle() const { return { rect.left + width() / 2, rect.bottom }; };
+    POINT bottom_middle() const { return { rect.left + width() / 2, rect.bottom }; };
     POINT bottom_right() const { return { rect.right, rect.bottom }; };
 };
 
@@ -31,16 +31,8 @@ struct MonitorInfo : ScreenSize
     HMONITOR handle;
 
     // Returns monitor rects ordered from left to right
-    static std::vector<MonitorInfo> GetMonitors(bool include_toolbar);
-    static int GetMonitorsCount();
-    // Return primary display
+    static std::vector<MonitorInfo> GetMonitors(bool includeNonWorkingArea);
     static MonitorInfo GetPrimaryMonitor();
-    // Return monitor on which hwnd window is displayed
-    static MonitorInfo GetFromWindow(HWND hwnd);
-    // Return monitor nearest to a point
-    static MonitorInfo GetFromPoint(POINT p);
-    // Return monitor info given a HMONITOR
-    static MonitorInfo GetFromHandle(HMONITOR monitor);
 };
 
 bool operator==(const ScreenSize& lhs, const ScreenSize& rhs);
